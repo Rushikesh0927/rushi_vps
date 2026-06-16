@@ -4,7 +4,7 @@
 clear
 
 # ==========================================
-# 🌟 COLOR CODES
+# 🌟 PREMIUM COLOR CODES & FX
 # ==========================================
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -15,7 +15,7 @@ CYAN='\033[0;36m'
 WHITE='\033[1;37m'
 NC='\033[0m'
 
-# FUNCTION: TYPING EFFECT
+# FUNCTION: TYPING EFFECT ANIMATION
 type_effect() {
     local text="$1"
     local delay="$2"
@@ -26,7 +26,7 @@ type_effect() {
     echo ""
 }
 
-# FUNCTION: LOADING BAR
+# FUNCTION: LOADING BAR ANIMATION
 loading_bar() {
     local title="$1"
     echo -ne "${YELLOW}⏳ $title ${NC}[          ]"
@@ -41,8 +41,15 @@ loading_bar() {
     echo -e " ${GREEN}DONE!${NC}"
 }
 
+# AUTOMATED ROOT/SUDO PRIVILEGE CHECK
+if [ "$(id -u)" -eq 0 ]; then
+    SUDO_CMD=""
+else
+    SUDO_CMD="sudo"
+fi
+
 # ==========================================
-# MAIN INTERACTIVE MENU (NO FOXYROOT)
+# MAIN DASHBOARD MENU (JISHNU TECH STYLE)
 # ==========================================
 show_menu() {
     clear
@@ -69,14 +76,22 @@ show_menu() {
     echo -e "  ${CYAN}[1]${NC} Create & Boot New Ubuntu VPS Instance"
     echo -e "  ${CYAN}[2]${NC} Restart Existing VPS Instance"
     echo -e "  ${CYAN}[3]${NC} Remove/Clean VPS Cache Files"
-    echo -e "  ${CYAN}[4]${NC} Exit System"
+    echo -e "  ${CYAN}[4]${NC} Exit Dashboard"
     echo ""
     echo -e "${RED}==========================================================${NC}"
     echo -ne "${WHITE}🔹 Enter Choice [1-4]: ${NC}"
     read CHOICE
+    
+    case $CHOICE in
+        1) create_vps ;;
+        2) restart_vps ;;
+        3) clean_vps ;;
+        4) exit 0 ;;
+        *) echo -e "${RED}❌ Invalid Choice!${NC}"; sleep 1; show_menu ;;
+    esac
 }
 
-# EXECUTE CONFIGURATION PROMPTS
+# CONFIGURATION AND SPECIFICATION INPUTS
 create_vps() {
     clear
     echo -e "${RED}==========================================================${NC}"
@@ -88,7 +103,7 @@ create_vps() {
     read RAM_GB
     echo -ne "${BLUE}🔹 Enter CPU Cores (e.g., 2, 4, 8): ${NC}"
     read CPU_CORES
-    echo -ne "${BLUE}🔹 Enter Disk Space to ADD in GB (e.g., 20): ${NC}"
+    echo -ne "${BLUE}🔹 Enter Disk Space to ADD in GB (e.g., 10, 20): ${NC}"
     read DISK_ADD
     echo -ne "${BLUE}🔹 Create Username (Default: ubuntu): ${NC}"
     read USER_NAME
@@ -98,15 +113,18 @@ create_vps() {
     USER_PASS=${USER_PASS:-1234}
     
     echo ""
-    loading_bar "Installing QEMU Environments"
-    apt-get update -y > /dev/null 2>&1
-    apt-get install -y qemu-system-x86 qemu-utils wget cloud-image-utils > /dev/null 2>&1
+    echo -e "${YELLOW}⏳ Background dependencies install ho rahi hain... Please wait.${NC}"
+    echo ""
     
+    $SUDO_CMD apt-get update -y > /dev/null 2>&1
+    $SUDO_CMD apt-get install -y qemu-system-x86 qemu-utils wget cloud-image-utils > /dev/null 2>&1
+    
+    # Check and download Ubuntu Image
     if [ ! -f "ubuntu22.qcow2" ]; then
-        echo -e "${YELLOW}📥 Downloading Ubuntu Server Cloud Image (First Time)...${NC}"
+        echo -e "${YELLOW}📥 Downloading Ubuntu 22.04 Cloud Image...${NC}"
         wget -q --show-progress https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img -O ubuntu22.qcow2
     else
-        echo -e "${GREEN}✅ Existing Ubuntu Image Detected. Skipping Download.${NC}"
+        echo -e "${GREEN}✅ Existing Ubuntu Image Cache Detected.${NC}"
     fi
     
     loading_bar "Generating Cloud-Init Matrix"
@@ -118,28 +136,40 @@ chpasswd:
     ${USER_NAME}:${USER_PASS}
   expire: False
 EOF
+
     cloud-localds seed.img user-data > /dev/null 2>&1
     
     loading_bar "Expanding Server Hard Disk Allocation"
     qemu-img resize ubuntu22.qcow2 +${DISK_ADD}G > /dev/null 2>&1
     
+    # Environment variables save kar rhe hain taaki restart ke waqt kaam aayein
+    echo "RAM_GB=$RAM_GB" > .vps_env
+    echo "CPU_CORES=$CPU_CORES" >> .vps_env
+    echo "USER_NAME=$USER_NAME" >> .vps_env
+    echo "USER_PASS=$USER_PASS" >> .vps_env
+    
     boot_qemu
 }
 
+# SYSTEM EXECUTION & BOOT ENGINE
 boot_qemu() {
+    # If environment file exists, load variables
+    if [ -f ".vps_env" ]; then
+        source .vps_env
+    fi
+
     clear
     echo -e "${GREEN}==========================================================${NC}"
     type_effect "👹 CHARACTER MATRIX SYNCHRONIZED! VPS BOOTING NOW!" 0.03
     echo -e "${GREEN}==========================================================${NC}"
     echo ""
-    echo -e "${WHITE}👤 USERNAME : ${CYAN}$USER_NAME${NC}"
-    echo -e "${WHITE}🔑 PASSWORD : ${CYAN}$USER_PASS${NC}"
-    echo -e "${WHITE}⚙️  RESOURCES: ${CYAN}${RAM_GB:-8}GB RAM | ${CPU_CORES:-4} Cores${NC}"
-    echo -e "${WHITE}🚀 SSH PORT : ${CYAN}2223${NC}"
-    echo ""
-    echo -e "${YELLOW}👉 LOGIN COMMAND: ssh ${USER_NAME:-ubuntu}@localhost -p 2223${NC}"
+    echo -e "${WHITE}👤 Username : ${CYAN}${USER_NAME:-ubuntu}${NC}"
+    echo -e "${WHITE}🔑 Password : ${CYAN}${USER_PASS:-1234}${NC}"
+    echo -e "${WHITE}⚙️  Resources: ${CYAN}${RAM_GB:-8}GB RAM | ${CPU_CORES:-4} Cores${NC}"
+    echo -e "${WHITE}🚀 Connection Port: ${CYAN}2223${NC}"
+    echo -e "${WHITE}👉 Login Command  : ${YELLOW}ssh ${USER_NAME:-ubuntu}@localhost -p 2223${NC}"
     echo -e "${GREEN}==========================================================${NC}"
-    sleep 2
+    echo ""
     
     qemu-system-x86_64 \
         -m ${RAM_GB:-8}G \
@@ -159,24 +189,18 @@ restart_vps() {
     else
         echo -e "${RED}❌ No existing system installation found! Please select Option 1 first.${NC}"
         sleep 2
+        show_menu
     fi
 }
 
 clean_vps() {
     echo -e "${RED}⚠️ Cleaning up workspace environment and caches...${NC}"
-    rm -rf user-data seed.img ubuntu22.qcow2
+    rm -rf user-data seed.img ubuntu22.qcow2 .vps_env
     sleep 1
     echo -e "${GREEN}✅ Workspace is completely wiped fresh!${NC}"
     sleep 2
+    show_menu
 }
 
-# TRIGGER LOGIC BASE
+# TRIGGER CODE BASE
 show_menu
-
-case $CHOICE in
-    1) create_vps ;;
-    2) restart_vps ;;
-    3) clean_vps ;;
-    4) exit 0 ;;
-    *) echo -e "${RED}Invalid Choice!${NC}"; sleep 1; show_menu ;;
-esac
