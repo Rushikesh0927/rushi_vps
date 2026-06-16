@@ -41,17 +41,8 @@ loading_bar() {
     echo -e " ${GREEN}DONE!${NC}"
 }
 
-# START: INITIALIZE FOXYROOT
-echo -e "${RED}==========================================================${NC}"
-echo -e "${WHITE}🚀 INITIALIZING ENVIRONMENT SYSTEM...${NC}"
-echo -e "${RED}==========================================================${NC}"
-if [ ! -d "freeroot" ]; then
-    git clone https://github.com/foxytouxxx/freeroot.git > /dev/null 2>&1
-fi
-cd freeroot && bash root.sh && cd ..
-
 # ==========================================
-# MAIN INTERACTIVE MENU (JISHNU TECH STYLE)
+# MAIN INTERACTIVE MENU (NO FOXYROOT)
 # ==========================================
 show_menu() {
     clear
@@ -176,7 +167,7 @@ clean_vps() {
     rm -rf user-data seed.img ubuntu22.qcow2
     sleep 1
     echo -e "${GREEN}✅ Workspace is completely wiped fresh!${NC}"
-    sleep 15
+    sleep 2
 }
 
 # TRIGGER LOGIC BASE
