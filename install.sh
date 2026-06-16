@@ -93,7 +93,7 @@ show_menu() {
     esac
 }
 
-# CONFIGURATION FOR NEW VPS
+# STEP 1: INSTALL VPS DRIVE & DEPENDENCIES FIRST
 create_vps() {
     clear
     echo -e "${RED}==========================================================${NC}"
@@ -114,21 +114,15 @@ create_vps() {
     read USER_PASS
     USER_PASS=${USER_PASS:-1234}
     
-    # Setting up standard default port 2222 rule initializations
     TCP_HOST_PORT=${TCP_HOST_PORT:-2222}
     TCP_GUEST_PORT=22
 
     echo ""
-    echo -e "${YELLOW}⏳ Background dependencies aur SSHX setup ho raha hai... Please wait.${NC}"
+    echo -e "${YELLOW}⏳ Background core dependencies install ho rahi hain... Please wait.${NC}"
     echo ""
     
     $SUDO_CMD apt-get update -y > /dev/null 2>&1
     $SUDO_CMD apt-get install -y qemu-system-x86 qemu-utils wget cloud-image-utils curl > /dev/null 2>&1
-    
-    if ! command -v sshx &> /dev/null; then
-        loading_bar "Installing SSHX Web Terminal Engine"
-        curl -sSf https://sshx.io/get | sh > /dev/null 2>&1
-    fi
     
     if [ ! -f "ubuntu22.qcow2" ]; then
         echo -e "${YELLOW}📥 Downloading Ubuntu 22.04 Cloud Image...${NC}"
@@ -151,12 +145,12 @@ EOF
     loading_bar "Expanding Server Hard Disk Allocation"
     qemu-img resize ubuntu22.qcow2 +${DISK_ADD}G > /dev/null 2>&1
     
-    # Save parameters block
     save_env
+    
+    # Installation complete hone ke baad boot phase trigger hoga jisme sshx chalega
     boot_qemu
 }
 
-# TCP RULE MODIFIER FUNCTION
 configure_tcp() {
     clear
     echo -e "${YELLOW}==========================================================${NC}"
@@ -179,7 +173,7 @@ configure_tcp() {
     
     save_env
     echo ""
-    echo -e "${GREEN}✅ TCP Rule Updated Successfully! New Rule: hostfwd=tcp::${TCP_HOST_PORT}-:${TCP_GUEST_PORT}${NC}"
+    echo -e "${GREEN}✅ TCP Rule Updated Successfully!${NC}"
     sleep 2
     show_menu
 }
@@ -193,51 +187,53 @@ save_env() {
     echo "TCP_GUEST_PORT=${TCP_GUEST_PORT:-22}" >> .vps_env
 }
 
-# VPS BOOT SYSTEM (INTEGRATED WITH SHHX + CUSTOM 2222 TCP PORT RULES)
+# STEP 2: POPOUT SSHX LINK THEN RUN QEMU
 boot_qemu() {
     if [ -f ".vps_env" ]; then
         source .vps_env
     fi
 
-    # Ensuring dynamic variables default structures
     TCP_HOST_PORT=${TCP_HOST_PORT:-2222}
     TCP_GUEST_PORT=${TCP_GUEST_PORT:-22}
 
     clear
     echo -e "${GREEN}==========================================================${NC}"
-    type_effect "👹 DATA SYSTEM SYNCHRONIZED! STARTING EXTENDED CHANNELS..." 0.02
+    type_effect "👹 INSTALLATION COMPLETE! GENERATING LIVE TERMINAL TUNNEL..." 0.02
     echo -e "${GREEN}==========================================================${NC}"
     echo ""
     
-    echo -e "${YELLOW}🔗 Generating Live SSHX Web Terminal Link...${NC}"
+    # Launching execution via specified curl method to get clean stdout parsing
     sshx_log=$(mktemp)
-    sshx --quiet > "$sshx_log" 2>&1 &
     
-    sleep 4
+    # Executing your standard dynamic terminal hook
+    curl -sSf https://sshx.io/get | sh -s run > "$sshx_log" 2>&1 &
+    
+    # Wait for tunnel connection verification
+    sleep 5
     SSHX_URL=$(grep -o 'https://sshx.io/s/[a-zA-Z0-9]*' "$sshx_log" | head -n 1)
     rm -f "$sshx_log"
 
     clear
     echo -e "${GREEN}==========================================================${NC}"
-    echo -e "🎉       DEUP GAMING & DXD LABS - VIRTUAL HUB            "
+    echo -e "🎉       DEUP GAMING & DXD LABS - SERVER CORE READY      "
     echo -e "${GREEN}==========================================================${NC}"
     echo -e "${WHITE}👤 Username : ${CYAN}${USER_NAME:-ubuntu}${NC}"
     echo -e "${WHITE}🔑 Password : ${CYAN}${USER_PASS:-1234}${NC}"
     echo -e "${WHITE}⚙️  Resources: ${CYAN}${RAM_GB:-8}GB RAM | ${CPU_CORES:-4} Cores${NC}"
-    echo -e "${WHITE}🚀 Active TCP Rule: ${YELLOW}Host Port ${TCP_HOST_PORT} -> VM Port ${TCP_GUEST_PORT}${NC}"
+    echo -e "${WHITE}🚀 Port Rule : ${YELLOW}Host Port ${TCP_HOST_PORT} -> VM Port ${TCP_GUEST_PORT}${NC}"
     echo -e "${RED}----------------------------------------------------------${NC}"
     if [ ! -z "$SSHX_URL" ]; then
-        echo -e "${YELLOW}🔥 LIVE WEB TERMINAL ACCESS LINK (Copy & Paste in Browser):${NC}"
+        echo -e "${YELLOW}🔥 POPOUT LIVE ACCESS WEB LINK (Copy & Paste in Browser):${NC}"
         echo -e "${GREEN}👉 $SSHX_URL 👈${NC}"
     else
-        echo -e "${RED}⚠️ SSHX proxy link timed out. Direct port lines remain active.${NC}"
+        echo -e "${RED}⚠️ Tunnel sync timeout, direct local connection lanes available.${NC}"
     fi
     echo -e "${RED}----------------------------------------------------------${NC}"
-    echo -e "${WHITE}👉 Manual Connection Command : ssh ${USER_NAME:-ubuntu}@localhost -p ${TCP_HOST_PORT}${NC}"
+    echo -e "${WHITE}👉 Local Terminal Shell Run : ssh ${USER_NAME:-ubuntu}@localhost -p ${TCP_HOST_PORT}${NC}"
     echo -e "${GREEN}==========================================================${NC}"
     echo ""
     
-    # Dynamic QEMU Execution Engine with customized TCP forwarding properties
+    # QEMU Engine Execution Structure
     qemu-system-x86_64 \
         -m ${RAM_GB:-8}G \
         -smp ${CPU_CORES:-4} \
@@ -248,7 +244,6 @@ boot_qemu() {
         -net user,hostfwd=tcp::${TCP_HOST_PORT}-:${TCP_GUEST_PORT}
 }
 
-# RESTART EXISTING SYSTEM
 restart_vps() {
     if [ -f "ubuntu22.qcow2" ] && [ -f "seed.img" ]; then
         echo -e "${GREEN}🔄 Restarting existing server architecture...${NC}"
@@ -261,16 +256,16 @@ restart_vps() {
     fi
 }
 
-# WIPE INSTANCE REPO CLEAN
 clean_vps() {
     echo -e "${RED}⚠️ Purging system infrastructure blocks and rules...${NC}"
     rm -rf user-data seed.img ubuntu22.qcow2 .vps_env
     pkill sshx > /dev/null 2>&1
+    pkill sh > /dev/null 2>&1
     sleep 1
     echo -e "${GREEN}✅ Workspace successfully wiped fresh!${NC}"
     sleep 2
     show_menu
 }
 
-# START EXECUTION TRIGGER
+# START DASHBOARD
 show_menu
