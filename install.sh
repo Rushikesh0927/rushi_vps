@@ -237,13 +237,15 @@ boot_qemu() {
     
     # 🚀 EXECUTING INTEGRATED CORE NETDEV NETWORK COMMAND STRUCTURE
     qemu-system-x86_64 \
-        -hda /home/daytona/ubuntu22.qcow2 \
-        -m $RAM_VALUE \
-        -smp ${CPU_CORES:-4} \
-        -drive file=seed.img,format=raw \
-        -nographic \
-        -netdev user,id=net0,hostfwd=tcp::${TCP_HOST_PORT}-:${TCP_GUEST_PORT} \
-        -device e1000,netdev=net0
+    -daemonize \
+    -pidfile /tmp/qemu.pid \
+    -hda /home/daytona/ubuntu22.qcow2 \
+    -m $RAM_VALUE \
+    -smp ${CPU_CORES:-4} \
+    -drive file=seed.img,format=raw \
+    -nographic \
+    -netdev user,id=net0,hostfwd=tcp::${TCP_HOST_PORT}-:${TCP_GUEST_PORT} \
+    -device e1000,netdev=net0
 }
 
 # RESTART PIPELINE
